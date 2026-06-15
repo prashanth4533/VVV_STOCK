@@ -1,0 +1,17 @@
+# ── Netlify build configuration ─────────────────────────────────────
+# Frontend lives at the repo root (Vite + React).
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# SPA fallback — serve index.html for any unmatched path so deep links
+# and refreshes don't 404. (App uses state-based navigation, no routing,
+# but this keeps direct refresh / unknown paths working.)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

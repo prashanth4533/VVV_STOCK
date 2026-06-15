@@ -1,0 +1,41 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Python (backend)
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Local databases & artifacts (backend is MySQL-only; these are leftovers)
+*.db
+*.backup-*.db
+tmp_e2e_audit.cjs

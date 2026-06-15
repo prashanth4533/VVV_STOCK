@@ -1,0 +1,319 @@
+/* ═══════════════════════════════════════════════════════════════
+   DASHBOARD — single-screen, no-scroll layout
+   Target: fits 1366×768 and 1920×1080 without scrolling
+   Mobile: normal scroll allowed
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Outer wrapper ──────────────────────────────────────────────
+   Use flex column with fixed gaps so total height stays predictable.
+   layout-content already has 24px padding top/bottom, so rows
+   must fit in: viewport - header(56px) - padding(48px) = ~664px @ 768px
+   ─────────────────────────────────────────────────────────────── */
+.db {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── ROW 1 — KPI cards ─────────────────────────────────────────
+   5 equal columns, compact height ~72px per card
+   ─────────────────────────────────────────────────────────────── */
+.db-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--acc-bd, var(--border));
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--t-base), box-shadow var(--t-base), transform var(--t-base);
+  animation: fadeInUp var(--t-slow) ease both;
+}
+/* Staggered entrance for a livelier first paint */
+.db-kpi-row .kpi-card:nth-child(1) { animation-delay: 0ms; }
+.db-kpi-row .kpi-card:nth-child(2) { animation-delay: 50ms; }
+.db-kpi-row .kpi-card:nth-child(3) { animation-delay: 100ms; }
+.db-kpi-row .kpi-card:nth-child(4) { animation-delay: 150ms; }
+.db-kpi-row .kpi-card:nth-child(5) { animation-delay: 200ms; }
+
+/* top accent line */
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--acc, var(--indigo-400));
+  opacity: 0.7;
+}
+
+.kpi-card:hover {
+  border-color: var(--acc, var(--indigo-400));
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+}
+
+.kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.kpi-icon {
+  width: 30px; height: 30px;
+  background: var(--acc-bg, var(--indigo-subtle));
+  border: 1px solid var(--acc-bd, rgba(99,102,241,0.2));
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--acc, var(--indigo-400));
+}
+
+.kpi-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 3px;
+}
+
+/* ── ROW 2 — Bar chart + Donut ──────────────────────────────────
+   60/40 split, fixed height so it doesn't grow
+   ─────────────────────────────────────────────────────────────── */
+.db-row2 {
+  display: grid;
+  grid-template-columns: 60fr 40fr;
+  gap: 14px;
+}
+
+.db-bar-card,
+.db-donut-card {
+  padding: 14px 16px;
+}
+
+.db-bar-card {
+  /* enough for chart + legend + title */
+  overflow: hidden;
+}
+
+.db-donut-card {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── ROW 3 — Category table + Recent txns ───────────────────────
+   50/50, fixed height, internal scroll if content overflows
+   ─────────────────────────────────────────────────────────────── */
+.db-row3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.db-cat-card,
+.db-txn-card {
+  padding: 16px 18px;
+  overflow: hidden;
+}
+
+.db-bar-card,
+.db-donut-card,
+.db-cat-card,
+.db-txn-card {
+  transition: border-color var(--t-base), box-shadow var(--t-base);
+}
+.db-bar-card:hover,
+.db-donut-card:hover,
+.db-cat-card:hover,
+.db-txn-card:hover {
+  border-color: var(--border);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+}
+
+/* ── Shared section title ───────────────────────────────────────── */
+.db-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+}
+
+/* ── Category compact table ─────────────────────────────────────── */
+.db-cat-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.db-cat-table thead th {
+  background: transparent;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.db-cat-table tbody td {
+  padding: 5px 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.db-cat-table tbody tr:last-child td { border-bottom: none; }
+.db-cat-table tbody tr:hover { background: var(--bg-hover); }
+
+.db-cat-name {
+  font-weight: 500;
+  color: var(--text-primary) !important;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Recent transactions list ───────────────────────────────────── */
+.db-txn-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.db-txn-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-muted);
+}
+.db-txn-item:last-child { border-bottom: none; }
+
+.db-txn-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.db-txn-dot--in     { background: var(--success); }
+.db-txn-dot--out    { background: var(--danger); }
+.db-txn-dot--adjust { background: var(--indigo-400); }
+
+.db-txn-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.db-txn-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.db-txn-cat {
+  font-size: 10px;
+  background: var(--bg-raised);
+  padding: 1px 5px;
+  border-radius: 99px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.db-txn-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.db-txn-qty {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.db-txn-qty--in  { color: var(--success); }
+.db-txn-qty--out { color: var(--danger); }
+
+.db-txn-time {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+/* ── Status donut legend (compact) ─────────────────────────────── */
+.status-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+}
+
+.legend-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legend-label { flex: 1; color: var(--text-secondary); }
+.legend-count { font-weight: 600; color: var(--text-primary); font-family: var(--font-mono); font-size: 11px; }
+.legend-pct   { color: var(--text-muted); min-width: 28px; text-align: right; font-size: 10px; }
+
+/* ── Responsive ─────────────────────────────────────────────────
+   Desktop (≥768px): everything fits without scroll.
+   Mobile (<768px): normal stacked scroll is fine.
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .db-kpi-row { grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .kpi-value  { font-size: 22px; }
+}
+
+@media (max-width: 900px) {
+  .db-row2 { grid-template-columns: 1fr; }
+  .db-row3 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 767px) {
+  .db { gap: 12px; }
+  .db-kpi-row { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .db-kpi-row > :last-child { grid-column: span 2; }
+  .kpi-value { font-size: 22px; }
+  .db-row2,
+  .db-row3 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 400px) {
+  .db-kpi-row { grid-template-columns: 1fr 1fr; }
+  .db-kpi-row > :last-child { grid-column: 1; }
+}
