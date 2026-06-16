@@ -7,6 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Frontend build/deps (patterns are path-agnostic — cover frontend/*)
 node_modules
 dist
 dist-ssr
@@ -29,6 +30,10 @@ dist-ssr
 .env.*.local
 .env.production
 
+# Secrets / tokens (never commit)
+*token*.txt
+gh_token.txt
+
 # Python (backend)
 __pycache__/
 *.pyc
@@ -38,4 +43,4 @@ venv/
 # Local databases & artifacts (backend is MySQL-only; these are leftovers)
 *.db
 *.backup-*.db
-tmp_e2e_audit.cjs
+*_dump.sql

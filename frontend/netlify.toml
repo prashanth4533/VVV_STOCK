@@ -1,5 +1,9 @@
 # ── Netlify build configuration ─────────────────────────────────────
-# Frontend lives at the repo root (Vite + React).
+# Frontend lives in the `frontend/` folder of the monorepo (Vite + React).
+# For a GitHub-connected deploy, set the site's Base directory = "frontend"
+# in the Netlify UI. `command` and `publish` here are relative to that base,
+# so they need no "frontend/" prefix.
+# (Current production uses Netlify Drop: build locally, drag `frontend/dist`.)
 
 [build]
   command = "npm run build"

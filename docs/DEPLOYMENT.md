@@ -7,23 +7,18 @@ Production-like hosting: **Netlify** (frontend) + **Railway** (backend) + **exis
 
 ---
 
-## 0. Prerequisite — push the repo to GitHub (BLOCKER)
+## 0. Repo layout (monorepo)
 
-The git repository currently contains **only `README.md`**; the application code
-is untracked. Railway and Netlify both deploy from a Git provider, so this must be
-done first.
-
-```bash
-cd vvvSTOCK
-git add .
-git commit -m "Add application + deployment configuration"
-git branch -M main
-git remote add origin https://github.com/<you>/vvv-stock.git   # if not already set
-git push -u origin main
+```
+vvvSTOCK/
+├── frontend/   # React/Vite app   → Netlify  (Base directory = frontend)
+├── backend/    # Flask API        → Railway  (Root Directory = backend)
+└── docs/       # this guide
 ```
 
-`.gitignore` is configured so secrets (`backend/.env`, `.env.production`) and the
-leftover local SQLite files (`*.db`) are **not** committed.
+The app is already deployed. Railway and Netlify both deploy from GitHub, so push
+changes before redeploying. `.gitignore` keeps secrets (`backend/.env`,
+`frontend/.env.production`) and local `*.db` files out of the repo.
 
 ---
 
@@ -43,8 +38,8 @@ Browser ──> Netlify (static React/Vite build)
 
 ## 2. Backend — Railway
 
-**Root directory must be set to `backend/`.** (The repo-root `requirements.txt` is
-an unrelated global pip freeze and must not be used.)
+**Root directory must be set to `backend/`.** Dependencies come from
+`backend/requirements.txt`.
 
 Deployment files (already created):
 - `backend/railway.json` — NIXPACKS build + Gunicorn start command.
@@ -68,14 +63,14 @@ Deployment files (already created):
 
 ## 3. Frontend — Netlify
 
-Deployment files (already created):
-- `netlify.toml` — build command `npm run build`, publish `dist`, SPA redirect.
-- `.env.production.example` — template for the one required variable.
+Deployment files (in `frontend/`):
+- `frontend/netlify.toml` — build command `npm run build`, publish `dist`, SPA redirect.
+- `frontend/.env.production.example` — template for the one required variable.
 
 ### Steps
 1. Netlify → **Add new site** → **Import from Git** → select this repo.
-2. Build settings are auto-read from `netlify.toml` (command `npm run build`,
-   publish `dist`). Leave base directory empty (frontend is at repo root).
+2. **Set Base directory = `frontend`.** Build settings are then read from
+   `frontend/netlify.toml` (command `npm run build`, publish `dist`).
 3. **Site settings → Environment variables** → add `VITE_API_BASE_URL`
    (section 4) pointing at the Railway domain **with** `/api/v1`.
 4. Deploy. Copy the Netlify site URL (e.g. `https://vvv-stock.netlify.app`).
@@ -103,6 +98,45 @@ Deployment files (already created):
 | Variable | Required | Example |
 |---|---|---|
 | `VITE_API_BASE_URL` | yes | `https://<railway-domain>/api/v1` |
+
+---
+
+## 4b. WhatsApp EOD report — cron + secrets
+
+The nightly report runs as a **separate one-shot process**, not inside the web
+workers (an in-process scheduler would double-fire with `--workers 2`).
+
+**Railway setup:**
+1. In the same project, add a **second service** from the same repo (Root
+   Directory = `backend`), OR add a **Cron Schedule** to a service.
+2. **Cron schedule:** `0 21 * * *` and set the service variable `TZ=Asia/Kolkata`
+   so 21:00 means IST.
+3. **Start command:** `python -m app.jobs.run_eod`
+   (one-shot: it runs once and exits — exactly what cron services expect).
+4. Add the secrets below as Railway **Variables** (shared with the web service).
+
+| Variable | Required | Notes |
+|---|---|---|
+| `WHATSAPP_API_TOKEN` | yes | Meta permanent system-user token. |
+| `WHATSAPP_PHONE_NUMBER_ID` | yes | Sender phone-number id from Meta. |
+| `WHATSAPP_API_VERSION` | no | Defaults to `v21.0`. |
+
+**Behaviour** (enable/disable, time, recipients, template) is stored in the
+`settings` table and managed via `GET`/`PUT /api/v1/eod/settings` — not env vars.
+
+**Before the first live run:**
+- [ ] Create + get Meta approval for a UTILITY template (12 body variables — see
+      the comment block in `app/services/message_formatter.py`). Put its name in
+      `eod.template_name`. *Unsolicited scheduled sends require a template;*
+      free-form text only works inside a 24h customer-service window.
+- [ ] Set `eod.recipients` to the partners' numbers (country code, digits only, no `+`).
+- [ ] Set `eod.enabled = true`.
+- [ ] Smoke test without sending: `python -m app.jobs.run_eod --dry-run --force`
+- [ ] Test one number from the Admin UI ("Test Send") or
+      `POST /api/v1/eod/test-send {"recipient":"9198..."}`.
+
+> Manual run any time: `python -m app.jobs.run_eod --force`
+> (`--date=YYYY-MM-DD` to backfill a specific day).
 
 ---
 
