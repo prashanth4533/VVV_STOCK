@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import MetricCard from './Metriccard';
 import StatusBadge from './Statusbadge';
+import StockImportModal, { exportCurrentStock } from './StockImport';
+import PurchaseImportModal, { downloadPurchaseTemplate } from './PurchaseImport';
+import SaleImportModal, { downloadSaleTemplate } from './SaleImport';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const money = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(value || 0));
@@ -25,8 +28,9 @@ function useLineItem(products) {
   return [item, set, setItem];
 }
 
-export function InventoryPage({ products, stockLog = [], onStockIn, onAdjustment }) {
+export function InventoryPage({ products, stockLog = [], onStockIn, onAdjustment, onStockUpdate }) {
   const [tab, setTab] = useState('in');
+  const [showStockImport, setShowStockImport] = useState(false);
   const [stockIn, setStockIn] = useState({ product_id: products[0]?.id || '', quantity: 1, notes: '' });
   const [adjustment, setAdjustment] = useState({ product_id: products[0]?.id || '', actual_stock: 0, reason: 'Correction', notes: '' });
   const selected = products.find((product) => product.id === Number(adjustment.product_id));
@@ -55,6 +59,27 @@ export function InventoryPage({ products, stockLog = [], onStockIn, onAdjustment
 
   return (
     <section className="screen-stack">
+      <div className="page-header compact">
+        <div>
+          <div className="page-title">Inventory</div>
+          <div className="page-subtitle">Stock receiving, adjustments, and bulk updates</div>
+        </div>
+        <div className="page-header-actions">
+          <button className="btn btn-secondary" onClick={() => exportCurrentStock(products)}>
+            <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
+              <path d="M8 2v8m0 0L5 7m3 3l3-3M3 13h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Export Stock
+          </button>
+          <button className="btn btn-secondary" onClick={() => setShowStockImport(true)}>
+            <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
+              <path d="M8 11V3m0 0L5 6m3-3l3 3M3 13h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Import Stock Update
+          </button>
+        </div>
+      </div>
+
       <div className="grid-3">
         <MetricCard label="Tracked SKUs" value={products.length} sub="available products" accent="indigo" />
         <MetricCard label="Units On Hand" value={products.reduce((sum, product) => sum + (product.stock || 0), 0)} sub="current stock" accent="green" />
@@ -134,15 +159,24 @@ export function InventoryPage({ products, stockLog = [], onStockIn, onAdjustment
           </table>
         </div>
       </div>
+
+      {showStockImport && (
+        <StockImportModal
+          products={products}
+          onStockUpdate={onStockUpdate}
+          onClose={() => setShowStockImport(false)}
+        />
+      )}
     </section>
   );
 }
 
-export function PurchasesPage({ products, suppliers, purchases, onCreate, searchQuery }) {
+export function PurchasesPage({ products, suppliers, purchases, onCreate, onImport, searchQuery }) {
   const [tab, setTab] = useState('entry');
   const [header, setHeader] = useState({ supplier_id: suppliers[0]?.id || '', purchase_date: today(), invoice_number: '', tax_amount: 0, notes: '' });
   const [item, setItem, setItemState] = useLineItem(products);
   const [items, setItems] = useState([]);
+  const [showImportModal, setShowImportModal] = useState(false);
   const filtered = filterRows(purchases, searchQuery, ['purchase_no', 'invoice_number', 'status']);
 
   const addItem = () => {
@@ -164,13 +198,24 @@ export function PurchasesPage({ products, suppliers, purchases, onCreate, search
     setItems([]);
   };
 
+  const purchaseActions = (
+    <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>
+      <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
+        <path d="M8 11V3m0 0L5 6m3-3l3 3M3 13h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+      Import Excel
+    </button>
+  );
+
   return (
+    <>
     <LedgerPage
       title="Purchases"
       tab={tab}
       onTab={setTab}
       entryLabel="Purchase Entry"
       historyLabel="Purchase History"
+      actions={purchaseActions}
       entry={(
         <form className="card form-card" onSubmit={submit}>
           <div className="grid-3">
@@ -190,14 +235,24 @@ export function PurchasesPage({ products, suppliers, purchases, onCreate, search
       )}
       history={<HistoryTable rows={filtered} type="purchase" empty="No purchases found." />}
     />
+    {showImportModal && (
+      <PurchaseImportModal
+        suppliers={suppliers}
+        products={products}
+        onImport={onImport}
+        onClose={() => setShowImportModal(false)}
+      />
+    )}
+    </>
   );
 }
 
-export function SalesPage({ products, sales, onCreate, searchQuery }) {
+export function SalesPage({ products, sales, onCreate, onImport, searchQuery }) {
   const [tab, setTab] = useState('entry');
   const [header, setHeader] = useState({ customer_name: '', customer_mobile: '', sale_date: today(), discount_amount: 0, notes: '' });
   const [item, setItem, setItemState] = useLineItem(products);
   const [items, setItems] = useState([]);
+  const [showImportModal, setShowImportModal] = useState(false);
   const filtered = filterRows(sales, searchQuery, ['sale_no', 'customer_name', 'status']);
 
   const addItem = () => {
@@ -219,13 +274,24 @@ export function SalesPage({ products, sales, onCreate, searchQuery }) {
     setItems([]);
   };
 
+  const saleActions = (
+    <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>
+      <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
+        <path d="M8 11V3m0 0L5 6m3-3l3 3M3 13h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+      Import Excel
+    </button>
+  );
+
   return (
+    <>
     <LedgerPage
       title="Sales"
       tab={tab}
       onTab={setTab}
       entryLabel="Sales Entry"
       historyLabel="Sales History"
+      actions={saleActions}
       entry={(
         <form className="card form-card" onSubmit={submit}>
           <div className="grid-3">
@@ -245,12 +311,23 @@ export function SalesPage({ products, sales, onCreate, searchQuery }) {
       )}
       history={<HistoryTable rows={filtered} type="sale" empty="No sales found." />}
     />
+    {showImportModal && (
+      <SaleImportModal
+        products={products}
+        onImport={onImport}
+        onClose={() => setShowImportModal(false)}
+      />
+    )}
+    </>
   );
 }
 
-export function SuppliersPage({ suppliers, onSave, searchQuery }) {
+export function SuppliersPage({ suppliers, onSave, onDelete, searchQuery }) {
+  const EMPTY = { name: '', contact_person: '', mobile: '', address: '', gst: '', notes: '' };
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: '', contact_person: '', mobile: '', address: '', gst: '', notes: '' });
+  const [form, setForm] = useState(EMPTY);
+  const [confirmDelete, setConfirmDelete] = useState(null); // supplier pending deletion
+  const [deleting, setDeleting] = useState(false);
   const filtered = filterRows(suppliers, searchQuery, ['name', 'contact', 'mobile', 'gst']);
   const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -266,11 +343,26 @@ export function SuppliersPage({ suppliers, onSave, searchQuery }) {
     });
   };
 
+  const cancelEdit = () => { setEditing(null); setForm(EMPTY); };
+
   const submit = async (event) => {
     event.preventDefault();
     await onSave(form, editing);
-    setEditing(null);
-    setForm({ name: '', contact_person: '', mobile: '', address: '', gst: '', notes: '' });
+    cancelEdit();
+  };
+
+  const doDelete = async () => {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    const ok = await onDelete(confirmDelete.id, confirmDelete.name);
+    setDeleting(false);
+    if (ok) {
+      if (editing === confirmDelete.id) cancelEdit();
+      setConfirmDelete(null);
+    } else {
+      // Backend rejected (e.g. linked to products) — keep dialog closed; toast shows why.
+      setConfirmDelete(null);
+    }
   };
 
   return (
@@ -281,6 +373,7 @@ export function SuppliersPage({ suppliers, onSave, searchQuery }) {
             <div className="page-title">{editing ? 'Edit Supplier' : 'Supplier Form'}</div>
             <div className="page-subtitle">Supplier contact and GST details</div>
           </div>
+          {editing && <button type="button" className="btn btn-ghost btn-sm" onClick={cancelEdit}>Cancel</button>}
         </div>
         <Field label="Supplier Name" value={form.name} onChange={(value) => set('name', value)} />
         <div className="grid-2">
@@ -304,16 +397,41 @@ export function SuppliersPage({ suppliers, onSave, searchQuery }) {
         </div>
         <div className="supplier-list">
           {filtered.length ? filtered.map((supplier) => (
-            <button className="supplier-row" key={supplier.id} onClick={() => edit(supplier)}>
-              <span>
-                <strong>{supplier.name}</strong>
-                <small>{supplier.contact || supplier.mobile || 'No contact added'}</small>
-              </span>
+            <div className={`supplier-row ${editing === supplier.id ? 'supplier-row--editing' : ''}`} key={supplier.id}>
+              <button type="button" className="supplier-row-main" onClick={() => edit(supplier)}>
+                <span>
+                  <strong>{supplier.name}</strong>
+                  <small>{supplier.contact || supplier.mobile || 'No contact added'}</small>
+                </span>
+              </button>
               <StatusBadge status={supplier.gst ? 'GST Verified' : 'No GST'} />
-            </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-icon btn-sm supplier-delete-btn"
+                title={`Delete ${supplier.name}`}
+                aria-label={`Delete ${supplier.name}`}
+                onClick={() => setConfirmDelete(supplier)}
+              >
+                <svg viewBox="0 0 20 20" fill="none" width="15" height="15">
+                  <path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
           )) : <Empty text="No suppliers found." />}
         </div>
       </div>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete supplier?"
+          message={`This will remove "${confirmDelete.name}". Suppliers linked to existing products cannot be deleted.`}
+          confirmLabel={deleting ? 'Deleting…' : 'Delete'}
+          danger
+          busy={deleting}
+          onConfirm={doDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
     </section>
   );
 }
@@ -380,7 +498,7 @@ export function ReportsPage({ products, purchases, sales, stockLog, onExport }) 
   );
 }
 
-function LedgerPage({ title, tab, onTab, entryLabel, historyLabel, entry, history }) {
+function LedgerPage({ title, tab, onTab, entryLabel, historyLabel, entry, history, actions }) {
   return (
     <section className="screen-stack">
       <div className="page-header">
@@ -388,9 +506,12 @@ function LedgerPage({ title, tab, onTab, entryLabel, historyLabel, entry, histor
           <div className="page-title">{title}</div>
           <div className="page-subtitle">Entry workflow and searchable history</div>
         </div>
-        <div className="segmented inline">
-          <button className={tab === 'entry' ? 'active' : ''} onClick={() => onTab('entry')}>{entryLabel}</button>
-          <button className={tab === 'history' ? 'active' : ''} onClick={() => onTab('history')}>{historyLabel}</button>
+        <div className="page-header-actions">
+          {actions}
+          <div className="segmented inline">
+            <button className={tab === 'entry' ? 'active' : ''} onClick={() => onTab('entry')}>{entryLabel}</button>
+            <button className={tab === 'history' ? 'active' : ''} onClick={() => onTab('history')}>{historyLabel}</button>
+          </div>
         </div>
       </div>
       {tab === 'entry' ? entry : history}
@@ -505,6 +626,25 @@ function Field({ label, value, onChange, ...props }) {
 
 function Empty({ text }) {
   return <div className="empty-state compact-empty"><span>{text}</span></div>;
+}
+
+export function ConfirmDialog({ title, message, confirmLabel = 'Confirm', danger, busy, onConfirm, onCancel }) {
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && !busy && onCancel()}>
+      <div className="modal" style={{ maxWidth: 420 }}>
+        <div className="modal-header">
+          <span className="modal-title">{title}</span>
+        </div>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6 }}>{message}</p>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onCancel} disabled={busy}>Cancel</button>
+          <button className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`} onClick={onConfirm} disabled={busy}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function filterRows(rows, query, fields) {

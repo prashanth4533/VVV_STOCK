@@ -33,4 +33,9 @@ export const SalesAPI = {
     const res = await api.patch(`/sales/${id}/cancel`);
     return res.data;
   },
+
+  async bulkImport(rows) {
+    const res = await api.post("/sales/bulk-import", { rows });
+    return res.data;
+  },
 };

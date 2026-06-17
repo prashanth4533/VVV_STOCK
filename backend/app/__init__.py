@@ -38,6 +38,8 @@ def create_app():
         eod_history,
         eod_draft,
         setting,
+        daily_report,
+        report_delivery,
     )
 
     # Register blueprints
@@ -48,6 +50,7 @@ def create_app():
         stock_transactions_bp,
         purchases_bp,
         sales_bp,
+        eod_bp,
     )
 
     app.register_blueprint(categories_bp)
@@ -56,6 +59,7 @@ def create_app():
     app.register_blueprint(stock_transactions_bp)
     app.register_blueprint(purchases_bp)
     app.register_blueprint(sales_bp)
+    app.register_blueprint(eod_bp)
 
     # Global error handlers
     from flask import jsonify

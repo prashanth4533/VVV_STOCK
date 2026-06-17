@@ -1,13 +1,15 @@
 import { useState, useMemo } from 'react';
 import StatusBadge from './Statusbadge';
+import ProductImportModal, { downloadProductTemplate } from './ProductImport';
 
-export default function Products({ data, CATS, st, onAddProduct, searchQuery }) {
+export default function Products({ data, CATS, st, onAddProduct, onImportProducts, suppliers, searchQuery }) {
   const { products = [] } = data;
 
   const [catFilter, setCatFilter] = useState('All');
   const [sortKey, setSortKey] = useState('name');
   const [sortDir, setSortDir] = useState('asc');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // ── Filter + sort ────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -51,12 +53,20 @@ export default function Products({ data, CATS, st, onAddProduct, searchQuery }) 
           <div className="page-title">Products</div>
           <div className="page-subtitle">{filtered.length} of {products.length} products</div>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-          <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
-            <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-          Add Product
-        </button>
+        <div className="page-header-actions">
+          <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>
+            <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
+              <path d="M8 11V3m0 0L5 6m3-3l3 3M3 13h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Import Excel
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+            <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
+              <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            Add Product
+          </button>
+        </div>
       </div>
 
       {/* ── Category filter pills ─────────────────────────────── */}
@@ -141,6 +151,16 @@ export default function Products({ data, CATS, st, onAddProduct, searchQuery }) 
           CATS={CATS}
           onClose={() => setShowAddModal(false)}
           onAdd={(product) => { onAddProduct?.(product); setShowAddModal(false); }}
+        />
+      )}
+
+      {/* ── Bulk import modal ─────────────────────────────────── */}
+      {showImportModal && (
+        <ProductImportModal
+          categories={CATS}
+          suppliers={suppliers}
+          onImport={onImportProducts}
+          onClose={() => setShowImportModal(false)}
         />
       )}
     </div>

@@ -166,8 +166,9 @@ class SupplierService:
     @staticmethod
     def delete(supplier_id: int) -> None:
         """
-        Soft-delete a supplier and set supplier_id = NULL on assigned products.
+        Soft-delete a supplier.
         Raises LookupError if not found.
+        Raises ValueError if the supplier is linked to active products.
         """
         sup = Supplier.query.filter(
             Supplier.id == supplier_id,
@@ -176,10 +177,17 @@ class SupplierService:
         if not sup:
             raise LookupError(f"Supplier {supplier_id} not found.")
 
-        # Unlink products
-        Product.query.filter_by(supplier_id=supplier_id).update(
-            {"supplier_id": None}, synchronize_session=False
+        # Block deletion if supplier is linked to active products
+        linked_count = (
+            Product.query.filter_by(supplier_id=supplier_id)
+            .filter(Product.deleted_at.is_(None))
+            .count()
         )
+        if linked_count > 0:
+            raise ValueError(
+                f"Cannot delete '{sup.name}' — it is linked to {linked_count} product(s). "
+                "Please reassign or remove those products first."
+            )
 
         # Soft delete
         sup.deleted_at = datetime.utcnow()

@@ -99,5 +99,30 @@ def delete_supplier(supplier_id: int):
         SupplierService.delete(supplier_id)
     except LookupError as exc:
         return error("NOT_FOUND", str(exc), 404)
+    except ValueError as exc:
+        return error("CONFLICT", str(exc), 409)
 
     return no_content()
+
+
+# ─── POST /api/v1/suppliers/import-products ───────────────────────────────────
+
+
+@bp.route("/import-products", methods=["POST"])
+def import_products():
+    """Bulk-import products from parsed Excel rows.
+
+    Expects JSON body: { "rows": [ { brand, item, pack_size, category, supplier,
+    opening_stock, reorder_level, purchase_price, selling_price }, ... ] }
+
+    Returns: { saved: int, errors: [ {row, message} ] }
+    """
+    from app.services.product_import_service import ProductImportService
+
+    body = request.get_json(silent=True) or {}
+    rows = body.get("rows", [])
+    if not isinstance(rows, list) or not rows:
+        return error("VALIDATION_ERROR", "rows must be a non-empty list.", 400)
+
+    result = ProductImportService.bulk_import(rows)
+    return success(result)

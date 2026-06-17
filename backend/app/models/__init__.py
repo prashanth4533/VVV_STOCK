@@ -9,3 +9,5 @@ from app.models.stock_transaction import StockTransaction  # noqa: F401
 from app.models.eod_history import EODHistory  # noqa: F401
 from app.models.eod_draft import EODDraft  # noqa: F401
 from app.models.setting import Setting  # noqa: F401
+from app.models.daily_report import DailyReport  # noqa: F401
+from app.models.report_delivery import ReportDelivery  # noqa: F401

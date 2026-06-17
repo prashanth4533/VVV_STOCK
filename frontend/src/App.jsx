@@ -147,8 +147,8 @@ function RedesignedApp() {
     eodHistory: [],
   }), [uiProducts, supplierOptions, purchases, sales, stockLog]);
 
-  const loadAll = useCallback(async () => {
-    setLoading(true);
+  const loadAll = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError('');
     try {
       const [nextProducts, nextCategories, nextSuppliers, nextPurchases, nextSales, nextTransactions] = await Promise.all([
@@ -232,15 +232,49 @@ function RedesignedApp() {
   };
 
   const handleCreatePurchase = async (payload) => {
-    await PurchasesAPI.create(payload);
-    toast('Purchase saved');
-    await loadAll();
+    try {
+      await PurchasesAPI.create(payload);
+      toast('Purchase saved');
+      await loadAll();
+    } catch (err) {
+      toast(err.message || 'Could not save purchase', 'error');
+    }
   };
 
   const handleCreateSale = async (payload) => {
-    await SalesAPI.create(payload);
-    toast('Sale saved');
-    await loadAll();
+    try {
+      await SalesAPI.create(payload);
+      toast('Sale saved');
+      await loadAll();
+    } catch (err) {
+      toast(err.message || 'Could not save sale', 'error');
+    }
+  };
+
+  const handleImportPurchases = async (rows) => {
+    try {
+      const result = await PurchasesAPI.bulkImport(rows);
+      if (result.saved > 0) toast(`${result.saved} purchase row(s) imported`);
+      if (result.failed > 0) toast(`${result.failed} row(s) skipped`, 'warning');
+      loadAll(true); // silent refresh — don't show spinner so modal stays visible
+      return result;
+    } catch (err) {
+      toast(err.message || 'Import failed', 'error');
+      return { total: rows.length, saved: 0, failed: rows.length, errors: [{ row: '-', field: 'general', message: err.message || 'Import failed' }] };
+    }
+  };
+
+  const handleImportSales = async (rows) => {
+    try {
+      const result = await SalesAPI.bulkImport(rows);
+      if (result.saved > 0) toast(`${result.saved} sale row(s) imported`);
+      if (result.failed > 0) toast(`${result.failed} row(s) skipped`, 'warning');
+      loadAll(true); // silent refresh — don't show spinner so modal stays visible
+      return result;
+    } catch (err) {
+      toast(err.message || 'Import failed', 'error');
+      return { total: rows.length, saved: 0, failed: rows.length, errors: [{ row: '-', field: 'general', message: err.message || 'Import failed' }] };
+    }
   };
 
   const handleSaveSupplier = async (payload, id) => {
@@ -248,6 +282,58 @@ function RedesignedApp() {
     else await SuppliersAPI.create(payload);
     toast(id ? 'Supplier updated' : 'Supplier added');
     await loadAll();
+  };
+
+  // Returns true on success, false if the backend rejected (e.g. linked to products).
+  const handleDeleteSupplier = async (id, name) => {
+    try {
+      await SuppliersAPI.delete(id);
+      toast(`Supplier "${name}" deleted`);
+      await loadAll();
+      return true;
+    } catch (err) {
+      toast(err.message || 'Supplier could not be deleted', 'error');
+      return false;
+    }
+  };
+
+  // Bulk product import — rows already parsed/validated on the frontend.
+  // Returns the backend result { total, saved, failed, errors }.
+  const handleImportProducts = async (rows) => {
+    try {
+      const result = await ProductsAPI.bulkImport(rows);
+      if (result.saved > 0) toast(`${result.saved} product(s) imported`);
+      if (result.failed > 0) toast(`${result.failed} row(s) skipped`, 'warning');
+      loadAll(true); // silent refresh — keep modal visible for result screen
+      return result;
+    } catch (err) {
+      toast(err.message || 'Import failed', 'error');
+      return { total: rows.length, saved: 0, failed: rows.length, errors: [{ row: '-', field: 'general', message: err.message || 'Import failed' }] };
+    }
+  };
+
+  // Bulk stock update — one adjustment transaction per changed product.
+  // `updates`: [{ product_id, actual_stock }]. Returns { saved, failed, errors }.
+  const handleStockUpdate = async (updates) => {
+    let saved = 0;
+    const errors = [];
+    for (const u of updates) {
+      try {
+        await StockTransactionsAPI.adjustment({
+          product_id: u.product_id,
+          actual_stock: u.actual_stock,
+          reason: 'Bulk Stock Update',
+          notes: 'Imported via stock update sheet',
+        });
+        saved += 1;
+      } catch (err) {
+        errors.push({ product: u.name || u.product_id, message: err.message || 'Adjustment failed' });
+      }
+    }
+    if (saved > 0) toast(`${saved} stock level(s) updated`);
+    if (errors.length) toast(`${errors.length} update(s) failed`, 'warning');
+    await loadAll();
+    return { saved, failed: errors.length, errors };
   };
 
   const handleExport = () => exportWorkbook({ products: uiProducts, suppliers: supplierOptions, purchases, sales, stockLog });
@@ -258,15 +344,15 @@ function RedesignedApp() {
 
     switch (activePage) {
       case 'products':
-        return <Products data={data} CATS={categories.map((c) => c.name)} st={stockStatus} onAddProduct={handleAddProduct} searchQuery={searchQuery} />;
+        return <Products data={data} CATS={categories.map((c) => c.name)} st={stockStatus} onAddProduct={handleAddProduct} onImportProducts={handleImportProducts} suppliers={supplierOptions} searchQuery={searchQuery} />;
       case 'stockin':
-        return <InventoryPage products={uiProducts} stockLog={stockLog} onStockIn={handleStockIn} onAdjustment={handleAdjustment} />;
+        return <InventoryPage products={uiProducts} stockLog={stockLog} onStockIn={handleStockIn} onAdjustment={handleAdjustment} onStockUpdate={handleStockUpdate} />;
       case 'purchases':
-        return <PurchasesPage products={uiProducts} suppliers={supplierOptions} purchases={purchases} onCreate={handleCreatePurchase} searchQuery={searchQuery} />;
+        return <PurchasesPage products={uiProducts} suppliers={supplierOptions} purchases={purchases} onCreate={handleCreatePurchase} onImport={handleImportPurchases} searchQuery={searchQuery} />;
       case 'sales':
-        return <SalesPage products={uiProducts} sales={sales} onCreate={handleCreateSale} searchQuery={searchQuery} />;
+        return <SalesPage products={uiProducts} sales={sales} onCreate={handleCreateSale} onImport={handleImportSales} searchQuery={searchQuery} />;
       case 'suppliers':
-        return <SuppliersPage suppliers={supplierOptions} onSave={handleSaveSupplier} searchQuery={searchQuery} />;
+        return <SuppliersPage suppliers={supplierOptions} onSave={handleSaveSupplier} onDelete={handleDeleteSupplier} searchQuery={searchQuery} />;
       case 'reports':
         return <ReportsPage products={uiProducts} purchases={purchases} sales={sales} stockLog={stockLog} onExport={handleExport} />;
       case 'dashboard':

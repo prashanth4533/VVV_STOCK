@@ -34,4 +34,9 @@ export const PurchasesAPI = {
     const res = await api.patch(`/purchases/${id}/cancel`);
     return res.data;
   },
+
+  async bulkImport(rows) {
+    const res = await api.post("/purchases/bulk-import", { rows });
+    return res.data;
+  },
 };

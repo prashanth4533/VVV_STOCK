@@ -100,4 +100,15 @@ export const ProductsAPI = {
   async delete(id) {
     await api.delete(`/products/${id}`);
   },
+
+  /**
+   * Bulk-import products from parsed Excel rows.
+   * @param {Array<object>} rows — each: { brand, item, pack_size, category,
+   *   supplier, opening_stock, reorder_level, purchase_price, selling_price }
+   * Returns { total, saved, failed, errors: [{row, field, message}] }.
+   */
+  async bulkImport(rows) {
+    const res = await api.post("/suppliers/import-products", { rows });
+    return res.data;
+  },
 };
