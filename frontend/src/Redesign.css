@@ -369,13 +369,66 @@
 /* ── Line item builder ──────────────────────────────────────── */
 .line-builder {
   display: grid;
-  grid-template-columns: minmax(200px, 1fr) 90px 140px 110px auto;
-  gap: 12px;
+  grid-template-columns: minmax(180px, 1fr) 80px 100px 120px 80px 36px;
+  gap: 10px;
   align-items: end;
   background: var(--bg-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 14px 16px;
+  padding: 12px 14px;
+}
+.line-builder-unit {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.line-builder-unit span {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.line-builder-unit strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  padding: 9px 0 9px 2px;
+}
+.input-suffix-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-suffix-wrap .input {
+  padding-right: 32px;
+  -moz-appearance: textfield;
+}
+.input-suffix-wrap .input::-webkit-outer-spin-button,
+.input-suffix-wrap .input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.input-suffix {
+  position: absolute;
+  right: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  pointer-events: none;
+  user-select: none;
+}
+.btn-add-line {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  align-self: end;
 }
 
 /* ── Form total row ─────────────────────────────────────────── */

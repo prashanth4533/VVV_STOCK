@@ -23,7 +23,7 @@ function rowTotal(row) {
 }
 
 function useLineItem(products) {
-  const [item, setItem] = useState({ product_id: products[0]?.id || '', quantity: 1, rate: products[0]?.purchasePrice || products[0]?.sellingPrice || 1 });
+  const [item, setItem] = useState({ product_id: products[0]?.id || '', quantity: 1, rate: products[0]?.purchasePrice || products[0]?.sellingPrice || 1, unit_value: products[0]?.unit || '' });
   const set = (key, value) => setItem((current) => ({ ...current, [key]: value }));
   return [item, set, setItem];
 }
@@ -178,11 +178,12 @@ export function PurchasesPage({ products, suppliers, purchases, onCreate, onImpo
   const [items, setItems] = useState([]);
   const [showImportModal, setShowImportModal] = useState(false);
   const filtered = filterRows(purchases, searchQuery, ['purchase_no', 'invoice_number', 'status']);
+  const editItem = (index, key, value) => setItems((current) => current.map((row, i) => i === index ? { ...row, [key]: value } : row));
 
   const addItem = () => {
     if (!item.product_id) return;
     setItems((current) => [...current, { ...item, product_id: Number(item.product_id), quantity: Number(item.quantity), rate: Number(item.rate) }]);
-    setItemState({ product_id: products[0]?.id || '', quantity: 1, rate: products[0]?.purchasePrice || 1 });
+    setItemState({ product_id: products[0]?.id || '', quantity: 1, rate: products[0]?.purchasePrice || 1, unit_value: products[0]?.unit || '' });
   };
 
   const submit = async (event) => {
@@ -224,7 +225,7 @@ export function PurchasesPage({ products, suppliers, purchases, onCreate, onImpo
             <Field label="Invoice Number" value={header.invoice_number} onChange={(value) => setHeader((f) => ({ ...f, invoice_number: value }))} />
           </div>
           <LineItemBuilder products={products} item={item} setItem={setItem} onAdd={addItem} rateLabel="Purchase Rate" />
-          <LineItemsTable items={items} products={products} onRemove={(idx) => setItems((current) => current.filter((_, index) => index !== idx))} />
+          <LineItemsTable items={items} products={products} onRemove={(idx) => setItems((current) => current.filter((_, index) => index !== idx))} onEdit={editItem} />
           <div className="grid-2">
             <Field label="Tax Amount" type="number" min="0" value={header.tax_amount} onChange={(value) => setHeader((f) => ({ ...f, tax_amount: value }))} />
             <Field label="Notes" value={header.notes} onChange={(value) => setHeader((f) => ({ ...f, notes: value }))} />
@@ -254,11 +255,12 @@ export function SalesPage({ products, sales, onCreate, onImport, searchQuery }) 
   const [items, setItems] = useState([]);
   const [showImportModal, setShowImportModal] = useState(false);
   const filtered = filterRows(sales, searchQuery, ['sale_no', 'customer_name', 'status']);
+  const editItem = (index, key, value) => setItems((current) => current.map((row, i) => i === index ? { ...row, [key]: value } : row));
 
   const addItem = () => {
     if (!item.product_id) return;
     setItems((current) => [...current, { ...item, product_id: Number(item.product_id), quantity: Number(item.quantity), rate: Number(item.rate) }]);
-    setItemState({ product_id: products[0]?.id || '', quantity: 1, rate: products[0]?.sellingPrice || 1 });
+    setItemState({ product_id: products[0]?.id || '', quantity: 1, rate: products[0]?.sellingPrice || 1, unit_value: products[0]?.unit || '' });
   };
 
   const submit = async (event) => {
@@ -300,7 +302,7 @@ export function SalesPage({ products, sales, onCreate, onImport, searchQuery }) 
             <Field label="Sale Date" type="date" value={header.sale_date} onChange={(value) => setHeader((f) => ({ ...f, sale_date: value }))} />
           </div>
           <LineItemBuilder products={products} item={item} setItem={setItem} onAdd={addItem} rateLabel="Sale Rate" />
-          <LineItemsTable items={items} products={products} onRemove={(idx) => setItems((current) => current.filter((_, index) => index !== idx))} />
+          <LineItemsTable items={items} products={products} onRemove={(idx) => setItems((current) => current.filter((_, index) => index !== idx))} onEdit={editItem} />
           <div className="grid-2">
             <Field label="Discount" type="number" min="0" value={header.discount_amount} onChange={(value) => setHeader((f) => ({ ...f, discount_amount: value }))} />
             <Field label="Notes" value={header.notes} onChange={(value) => setHeader((f) => ({ ...f, notes: value }))} />
@@ -519,36 +521,95 @@ function LedgerPage({ title, tab, onTab, entryLabel, historyLabel, entry, histor
   );
 }
 
+function parseUnit(unit) {
+  if (!unit) return { num: '', suffix: '' };
+  const match = unit.match(/^(\d*\.?\d*)(.*)$/);
+  return { num: match?.[1] || '', suffix: match?.[2]?.trim() || '' };
+}
+
 function LineItemBuilder({ products, item, setItem, onAdd, rateLabel }) {
   const selected = products.find((product) => product.id === Number(item.product_id));
+  const { num: unitNum, suffix: unitSuffix } = parseUnit(item.unit_value ?? selected?.unit ?? '');
+
+  const handleProductChange = (value) => {
+    const p = products.find((pr) => pr.id === Number(value));
+    setItem('product_id', value);
+    if (p) {
+      setItem('rate', p.sellingPrice || p.purchasePrice || 1);
+      setItem('unit_value', p.unit || '');
+    }
+  };
+
+  const handleUnitNumChange = (val) => {
+    setItem('unit_value', val + unitSuffix);
+  };
+
   return (
     <div className="line-builder">
-      <ProductSelect products={products} value={item.product_id} onChange={(value) => setItem('product_id', value)} />
+      <ProductSelect products={products} value={item.product_id} onChange={handleProductChange} />
       <Field label="Qty" type="number" min="1" value={item.quantity} onChange={(value) => setItem('quantity', value)} />
+      <label className="form-group">
+        <span className="form-label">Unit</span>
+        <div className="input-suffix-wrap">
+          <input
+            className="input"
+            type="number"
+            min="0"
+            step="any"
+            value={unitNum}
+            onChange={(e) => handleUnitNumChange(e.target.value)}
+          />
+          {unitSuffix && <span className="input-suffix">{unitSuffix}</span>}
+        </div>
+      </label>
       <Field label={rateLabel} type="number" min="0.01" step="0.01" value={item.rate} onChange={(value) => setItem('rate', value)} />
-      <div className="stock-preview">
+      <div className="line-builder-unit">
         <span>Available</span>
         <strong>{selected?.stock ?? 0}</strong>
       </div>
-      <button className="btn btn-secondary" type="button" onClick={onAdd}>Add Line</button>
+      <button className="btn btn-primary btn-add-line" type="button" onClick={onAdd} title="Add line">
+        <svg viewBox="0 0 16 16" fill="none" width="16" height="16">
+          <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      </button>
     </div>
   );
 }
 
-function LineItemsTable({ items, products, onRemove }) {
+function LineItemsTable({ items, products, onRemove, onEdit }) {
   if (!items.length) return <Empty text="No line items added." />;
   return (
     <div className="table-wrap">
       <table>
-        <thead><tr><th>Product</th><th>Qty</th><th>Rate</th><th>Total</th><th></th></tr></thead>
+        <thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Rate</th><th>Total</th><th></th></tr></thead>
         <tbody>
           {items.map((item, index) => {
             const product = products.find((entry) => entry.id === item.product_id);
             return (
               <tr key={`${item.product_id}-${index}`}>
                 <td>{product ? productName(product) : item.product_id}</td>
-                <td>{item.quantity}</td>
-                <td>{money(item.rate)}</td>
+                <td>
+                  <input
+                    className="input input--inline"
+                    type="number"
+                    min="1"
+                    value={item.quantity}
+                    onChange={(e) => onEdit(index, 'quantity', Number(e.target.value))}
+                    style={{ width: 64 }}
+                  />
+                </td>
+                <td style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{product?.unit || '-'}</td>
+                <td>
+                  <input
+                    className="input input--inline"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={item.rate}
+                    onChange={(e) => onEdit(index, 'rate', Number(e.target.value))}
+                    style={{ width: 88 }}
+                  />
+                </td>
                 <td>{money(rowTotal(item))}</td>
                 <td><button className="btn btn-ghost btn-sm" type="button" onClick={() => onRemove(index)}>Remove</button></td>
               </tr>
