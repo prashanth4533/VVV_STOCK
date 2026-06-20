@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:5000/api/v1/products?per_page=3)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(p['id'], p['brand'], p['item'], p['pack_size'], 'stock:', p['current_stock']\\) for p in d['data'][:3]]\")"
+    ]
+  }
+}

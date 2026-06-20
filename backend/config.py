@@ -47,8 +47,8 @@ class Config:
         "pool_timeout": 30,
     }
 
-    # CORS
-    CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+    # CORS — allow local dev ports and production
+    CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")
 
 
 class DevelopmentConfig(Config):
