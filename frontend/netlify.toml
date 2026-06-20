@@ -11,6 +11,7 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  VITE_API_BASE_URL = "https://vvvstock-production.up.railway.app/api/v1"
 
 # SPA fallback — serve index.html for any unmatched path so deep links
 # and refreshes don't 404. (App uses state-based navigation, no routing,
